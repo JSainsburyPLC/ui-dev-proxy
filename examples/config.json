@@ -1,0 +1,30 @@
+{
+  "routes": [
+    {
+      "type": "proxy",
+      "path_pattern": "^/test-ui/.*",
+      "backend": "http://localhost:3000"
+    },
+    {
+      "type": "mock",
+      "mock": {
+        "request": {
+          "method": "GET",
+          "path": "^/api/v1/product/.*",
+          "query": "include=.*"
+        },
+        "response": {
+          "status": 200,
+          "body": "mocks/product.json",
+          "cookies": [
+            {
+              "name": "SOME_COOKIE",
+              "value": "1234567890",
+              "maxAge": 604800
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
