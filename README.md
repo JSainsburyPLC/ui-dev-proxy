@@ -1,5 +1,7 @@
 # UI Dev Proxy
 
+[![Build Status](https://img.shields.io/travis/JSainsburyPLC/ui-dev-proxy.svg?logo=travis&style=for-the-badge)](https://travis-ci.org/JSainsburyPLC/ui-dev-proxy)
+
 Proxy tool for development of UIs.
 
 ## Installation
