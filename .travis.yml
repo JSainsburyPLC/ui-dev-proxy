@@ -1,0 +1,6 @@
+language: go
+go:
+  - 'stable'
+script: make test
+notifications:
+  email: false
