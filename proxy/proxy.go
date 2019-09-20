@@ -91,7 +91,7 @@ func handler(
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Printf("inbound request on '%s %s'\n", r.Method, r.URL.String())
 
-		matchedRoute, err := matchRoute(conf, matcher, r)
+		matchedRoute, err := matchRoute(conf, matcher, r, mocksEnabled)
 		if err != nil {
 			logger.Printf(err.Error())
 			w.WriteHeader(http.StatusBadGateway)
@@ -121,7 +121,7 @@ func handler(
 	}
 }
 
-func matchRoute(conf domain.Config, matcher domain.Matcher, r *http.Request) (*domain.Route, error) {
+func matchRoute(conf domain.Config, matcher domain.Matcher, r *http.Request, mocksEnabled bool) (*domain.Route, error) {
 	for _, route := range conf.Routes {
 		switch route.Type {
 		case domain.RouteTypeProxy:
@@ -129,11 +129,13 @@ func matchRoute(conf domain.Config, matcher domain.Matcher, r *http.Request) (*d
 				return &route, nil
 			}
 		case domain.RouteTypeMock:
-			if route.Mock == nil {
-				return nil, errors.New("missing mock in config")
-			}
-			if matcher.Match(r, *route.Mock) {
-				return &route, nil
+			if mocksEnabled {
+				if route.Mock == nil {
+					return nil, errors.New("missing mock in config")
+				}
+				if matcher.Match(r, *route.Mock) {
+					return &route, nil
+				}
 			}
 		default:
 			return nil, fmt.Errorf("unknown route type '%s'", route.Type)
