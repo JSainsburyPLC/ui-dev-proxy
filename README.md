@@ -77,7 +77,7 @@ See `examples/config.json`
 
 ### Release
 
-Releases are managed using [goreleaser](https://github.com/goreleaser/goreleaser).
+Releases are managed using goreleaser. Download a binary from a release [here](https://github.com/goreleaser/goreleaser/releases) and ensure it is on your PATH: 
 
 To release:
 -	Tag the commit you want to release, e.g. `git tag v0.1.1`
