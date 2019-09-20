@@ -72,3 +72,17 @@ See `examples/config.json`
   }
 }
 ```
+
+## Development
+
+### Release
+
+Releases are managed using [goreleaser](https://github.com/goreleaser/goreleaser).
+
+To release:
+-	Tag the commit you want to release, e.g. `git tag v0.1.1`
+-	run `make release` 
+
+You will need a github personal access token bound to env var `GITHUB_TOKEN`
+
+You can dry run the release by running `make test-release`
