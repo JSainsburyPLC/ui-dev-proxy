@@ -61,6 +61,23 @@ func TestProxy_ProxyBackend_UserProxy_Success(t *testing.T) {
 		End()
 }
 
+func TestProxy_ProxyBackend_RewriteURL(t *testing.T) {
+	newApiTest(configWithRewrite(map[string]string{
+		"/test-ui/(.*)": "/rewrite-ui/$1",
+	}), "http://test-backend", false).
+		Mocks(apitest.NewMock().
+			Get("http://localhost:3001/rewrite-ui/users/info").
+			RespondWith().
+			Status(http.StatusOK).
+			Body(`{"user_id": "123"}`).
+			End()).
+		Get("/test-ui/users/info").
+		Expect(t).
+		Status(http.StatusOK).
+		Body(`{"user_id": "123"}`).
+		End()
+}
+
 func TestProxy_MockBackend_Failure(t *testing.T) {
 	newApiTest(config(), "http://test-backend", false).
 		Mocks(
@@ -192,6 +209,12 @@ func config() domain.Config {
 			},
 		},
 	}
+}
+
+func configWithRewrite(rewrite map[string]string) domain.Config {
+	conf := config()
+	conf.Routes[0].Rewrite = rewrite
+	return conf
 }
 
 func invalidTypeConfig() domain.Config {

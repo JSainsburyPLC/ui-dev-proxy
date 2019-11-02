@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
+	"github.com/JSainsburyPLC/ui-dev-proxy/http/rewrite"
+
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -30,7 +32,7 @@ func NewProxy(
 	logger *log.Logger,
 ) *Proxy {
 	reverseProxy := &httputil.ReverseProxy{
-		Director:     director(defaultBackend),
+		Director:     director(defaultBackend, logger),
 		ErrorHandler: errorHandler(logger),
 	}
 	return &Proxy{
@@ -56,7 +58,7 @@ func (p *Proxy) Start() {
 	}
 }
 
-func director(defaultBackend *url.URL) func(req *http.Request) {
+func director(defaultBackend *url.URL, logger *log.Logger) func(req *http.Request) {
 	return func(req *http.Request) {
 		route, ok := req.Context().Value(routeCtxKey).(*domain.Route)
 		if !ok {
@@ -70,6 +72,26 @@ func director(defaultBackend *url.URL) func(req *http.Request) {
 		req.URL.Scheme = route.Backend.Scheme
 		req.URL.Host = route.Backend.Host
 		req.Host = route.Backend.Host
+
+		// apply any defined rewrite rules
+		for pattern, to := range route.Rewrite {
+			rule, err := rewrite.NewRule(pattern, to)
+			if err != nil {
+				logger.Println(fmt.Sprintf("error creating rewrite rule. %v", err))
+				continue
+			}
+
+			matched, err := rule.Rewrite(req)
+			if err != nil {
+				logger.Println(fmt.Sprintf("failed to rewrite request. %v", err))
+				continue
+			}
+
+			// recursive rewrites are not supported, exit on first rewrite
+			if matched {
+				break
+			}
+		}
 	}
 }
 

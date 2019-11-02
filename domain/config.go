@@ -16,10 +16,11 @@ type Config struct {
 }
 
 type Route struct {
-	Type        string       `json:"type"`
-	PathPattern *PathPattern `json:"path_pattern"`
-	Backend     *Backend     `json:"backend"`
-	Mock        *Mock        `json:"mock"`
+	Type        string            `json:"type"`
+	PathPattern *PathPattern      `json:"path_pattern"`
+	Backend     *Backend          `json:"backend"`
+	Mock        *Mock             `json:"mock"`
+	Rewrite     map[string]string `json:"rewrite"`
 }
 
 type PathPattern struct {
