@@ -88,4 +88,4 @@ To release:
 
 You will need a github personal access token bound to env var `GITHUB_TOKEN`
 
-You can dry run the release by running `make test-release`
+You can dry run the release by running `make release-dry-run`
