@@ -43,7 +43,10 @@ See `examples/config.json`
 {
   "type": "proxy", // Required
   "path_pattern": "^/test-ui/.*", // regex to match request path. Required
-  "backend": "http://localhost:3000" // backend scheme and host to proxy to. Required
+  "backend": "http://localhost:3000", // backend scheme and host to proxy to. Required
+  "rewrite": { // optional rewrite rules
+    "/test-ui/(.*)": "/$1"
+  }
 }
 ```
 
