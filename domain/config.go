@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	RouteTypeProxy = "proxy"
-	RouteTypeMock  = "mock"
+	RouteTypeProxy    = "proxy"
+	RouteTypeMock     = "mock"
+	RouteTypeRedirect = "redirect"
 )
 
 type Config struct {
@@ -16,11 +17,22 @@ type Config struct {
 }
 
 type Route struct {
-	Type        string            `json:"type"`
-	PathPattern *PathPattern      `json:"path_pattern"`
-	Backend     *Backend          `json:"backend"`
-	Mock        *Mock             `json:"mock"`
-	Rewrite     map[string]string `json:"rewrite"`
+	Type        string       `json:"type"`
+	PathPattern *PathPattern `json:"path_pattern"`
+	Backend     *Backend     `json:"backend"`
+	Mock        *Mock        `json:"mock"`
+	Rewrite     []Rewrite    `json:"rewrite"`
+	Redirect    *Redirect    `json:"redirect"`
+}
+
+type Rewrite struct {
+	PathPattern *PathPattern `json:"path_pattern"`
+	To          string       `json:"to"`
+}
+
+type Redirect struct {
+	To   string `json:"to"`
+	Type string `json:"type"` // either permanent or temporary. Defaults to permanent if not provided
 }
 
 type PathPattern struct {

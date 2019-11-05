@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
-	"github.com/JSainsburyPLC/ui-dev-proxy/http/rewrite"
-
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"time"
+
+	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
 )
 
 const routeCtxKey = "route"
@@ -68,27 +68,19 @@ func director(defaultBackend *url.URL, logger *log.Logger) func(req *http.Reques
 			req.Host = defaultBackend.Host
 			return
 		}
+
 		// if route is set redirect to route backend
 		req.URL.Scheme = route.Backend.Scheme
 		req.URL.Host = route.Backend.Host
 		req.Host = route.Backend.Host
 
 		// apply any defined rewrite rules
-		for pattern, to := range route.Rewrite {
-			rule, err := rewrite.NewRule(pattern, to)
-			if err != nil {
-				logger.Println(fmt.Sprintf("error creating rewrite rule. %v", err))
-				continue
-			}
-
-			matched, err := rule.Rewrite(req)
-			if err != nil {
-				logger.Println(fmt.Sprintf("failed to rewrite request. %v", err))
-				continue
-			}
-
-			// recursive rewrites are not supported, exit on first rewrite
-			if matched {
+		for _, rule := range route.Rewrite {
+			if matches := rule.PathPattern.MatchString(path.Clean(req.URL.Path)); matches {
+				if err := rewrite(rule, req); err != nil {
+					logger.Println(fmt.Sprintf("failed to rewrite request. %v", err))
+					continue
+				}
 				break
 			}
 		}
@@ -131,6 +123,16 @@ func handler(
 			logger.Printf("directing to route backend '%s'\n", matchedRoute.Backend.Host)
 			r = r.WithContext(context.WithValue(r.Context(), routeCtxKey, matchedRoute))
 			reverseProxy.ServeHTTP(w, r)
+		case domain.RouteTypeRedirect:
+			to := replaceURL(matchedRoute.PathPattern, matchedRoute.Redirect.To, r.URL)
+			u, err := url.Parse(to)
+			if err != nil {
+				logger.Printf(err.Error())
+				w.WriteHeader(http.StatusBadGateway)
+				_, _ = w.Write([]byte("Bad gateway"))
+			}
+
+			http.Redirect(w, r, u.String(), redirectStatusCode(matchedRoute.Redirect.Type))
 		case domain.RouteTypeMock:
 			if !mocksEnabled {
 				logger.Println("directing to default backend")
@@ -147,6 +149,13 @@ func matchRoute(conf domain.Config, matcher domain.Matcher, r *http.Request, moc
 	for _, route := range conf.Routes {
 		switch route.Type {
 		case domain.RouteTypeProxy:
+			if route.PathPattern.MatchString(r.URL.Path) {
+				return &route, nil
+			}
+		case domain.RouteTypeRedirect:
+			if route.Redirect == nil {
+				return nil, errors.New("missing redirect in config")
+			}
 			if route.PathPattern.MatchString(r.URL.Path) {
 				return &route, nil
 			}
@@ -191,4 +200,34 @@ func addCookie(w http.ResponseWriter, cookie domain.Cookie) {
 		Path:    "/",
 	}
 	http.SetCookie(w, &c)
+}
+
+func rewrite(rule domain.Rewrite, req *http.Request) error {
+	to := path.Clean(replaceURL(rule.PathPattern, rule.To, req.URL))
+	u, e := url.Parse(to)
+	if e != nil {
+		return fmt.Errorf("rewritten URL is not valid. %w", e)
+	}
+
+	req.URL.Path = u.Path
+	req.URL.RawPath = u.RawPath
+	if u.RawQuery != "" {
+		req.URL.RawQuery = u.RawQuery
+	}
+
+	return nil
+}
+
+func replaceURL(pattern *domain.PathPattern, to string, u *url.URL) string {
+	uri := u.RequestURI()
+	match := pattern.FindStringSubmatchIndex(uri)
+	result := pattern.ExpandString([]byte(""), to, uri, match)
+	return string(result[:])
+}
+
+func redirectStatusCode(method string) int {
+	if method == "permanent" || method == "" {
+		return http.StatusMovedPermanently
+	}
+	return http.StatusFound
 }

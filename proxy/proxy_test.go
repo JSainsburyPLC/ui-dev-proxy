@@ -1,14 +1,15 @@
 package proxy
 
 import (
-	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
-	"github.com/steinfletcher/apitest"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"regexp"
 	"testing"
+
+	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
+	"github.com/steinfletcher/apitest"
 )
 
 func newApiTest(
@@ -61,20 +62,106 @@ func TestProxy_ProxyBackend_UserProxy_Success(t *testing.T) {
 		End()
 }
 
-func TestProxy_ProxyBackend_RewriteURL(t *testing.T) {
-	newApiTest(configWithRewrite(map[string]string{
-		"/test-ui/(.*)": "/rewrite-ui/$1",
-	}), "http://test-backend", false).
-		Mocks(apitest.NewMock().
-			Get("http://localhost:3001/rewrite-ui/users/info").
-			RespondWith().
-			Status(http.StatusOK).
-			Body(`{"user_id": "123"}`).
-			End()).
+func TestProxy_Rewrite(t *testing.T) {
+	tests := map[string]struct {
+		pattern string
+		to      string
+		before  string
+		after   string
+	}{
+		"constant": {
+			pattern: "/test-ui/users/info",
+			to:      "/rewrite-ui/users/info",
+			before:  "/test-ui/users/info",
+			after:   "/rewrite-ui/users/info",
+		},
+		"preserves original URL if no match": {
+			pattern: "^/other-ui/(.*)",
+			to:      "/rewrite-ui/$1",
+			before:  "/test-ui/users/info",
+			after:   "/test-ui/users/info",
+		},
+		"match group": {
+			pattern: "^/test-ui/(.*)",
+			to:      "/rewrite-ui/$1",
+			before:  "/test-ui/users/info",
+			after:   "/rewrite-ui/users/info",
+		},
+		"multiple match groups": {
+			pattern: "^/test-(.*)/users/(.*)",
+			to:      "/rewrite-$1/$2",
+			before:  "/test-ui/users/info",
+			after:   "/rewrite-ui/info",
+		},
+		"encoded characters": {
+			pattern: "^/test-ui/users/(.*)",
+			to:      "/rewrite-ui/$1",
+			before:  "/test-ui/users/x-1%2F",
+			after:   "/rewrite-ui/x-1%2F",
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			mockProxyUrlUserUi, _ := url.Parse("http://localhost:3001")
+			route := domain.Route{
+				Type:        "proxy",
+				PathPattern: &domain.PathPattern{Regexp: regexp.MustCompile("^/test-ui/users/.*")},
+				Backend:     &domain.Backend{URL: mockProxyUrlUserUi},
+				Rewrite: []domain.Rewrite{{
+					PathPattern: &domain.PathPattern{Regexp: regexp.MustCompile(test.pattern)},
+					To:          test.to,
+				}},
+			}
+
+			newApiTest(configWithRoutes(route), "http://test-backend", false).
+				Mocks(apitest.NewMock().
+					Get("http://localhost:3001" + test.after).
+					RespondWith().
+					Status(http.StatusOK).
+					Body(`{"user_id": "123"}`).
+					End()).
+				Get(test.before).
+				Expect(t).
+				Status(http.StatusOK).
+				Body(`{"user_id": "123"}`).
+				End()
+		})
+	}
+}
+
+func TestProxy_ProxyBackend_Redirect_Temporary(t *testing.T) {
+	route := domain.Route{
+		Type:        "redirect",
+		PathPattern: &domain.PathPattern{Regexp: regexp.MustCompile("/test-ui/(.*)")},
+		Redirect: &domain.Redirect{
+			To:   "http://www.domain2.com/redirect-ui/$1",
+			Type: "temporary",
+		},
+	}
+
+	newApiTest(configWithRoutes(route), "http://test-backend", false).
 		Get("/test-ui/users/info").
 		Expect(t).
-		Status(http.StatusOK).
-		Body(`{"user_id": "123"}`).
+		Status(http.StatusFound).
+		Header("Location", "http://www.domain2.com/redirect-ui/users/info").
+		End()
+}
+
+func TestProxy_ProxyBackend_Redirect_Permanent(t *testing.T) {
+	route := domain.Route{
+		Type:        "redirect",
+		PathPattern: &domain.PathPattern{Regexp: regexp.MustCompile("/test-ui/(.*)")},
+		Redirect: &domain.Redirect{
+			To:   "http://www.domain2.com/redirect-ui/$1",
+			Type: "permanent",
+		},
+	}
+
+	newApiTest(configWithRoutes(route), "http://test-backend", false).
+		Get("/test-ui/users/info").
+		Expect(t).
+		Status(http.StatusMovedPermanently).
+		Header("Location", "http://www.domain2.com/redirect-ui/users/info").
 		End()
 }
 
@@ -211,9 +298,9 @@ func config() domain.Config {
 	}
 }
 
-func configWithRewrite(rewrite map[string]string) domain.Config {
+func configWithRoutes(routes ...domain.Route) domain.Config {
 	conf := config()
-	conf.Routes[0].Rewrite = rewrite
+	conf.Routes = routes
 	return conf
 }
 

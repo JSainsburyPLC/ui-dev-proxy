@@ -2,7 +2,7 @@ package commands
 
 import (
 	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
-	"github.com/JSainsburyPLC/ui-dev-proxy/http/proxy"
+	"github.com/JSainsburyPLC/ui-dev-proxy/proxy"
 	"github.com/urfave/cli"
 	"log"
 	"net/url"
