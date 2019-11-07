@@ -3,11 +3,13 @@ package file
 import (
 	"encoding/json"
 	"errors"
-	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
 )
 
 func ConfigProvider() domain.ConfigProvider {
@@ -30,6 +32,13 @@ func ConfigProvider() domain.ConfigProvider {
 
 		for _, r := range c.Routes {
 			if r.Type != domain.RouteTypeMock {
+				if r.Redirect != nil {
+					redirectType := r.Redirect.Type
+					if redirectType != "permanent" && redirectType != "temporary" {
+						return domain.Config{}, fmt.Errorf("invalid redirect type '%s'", redirectType)
+					}
+				}
+
 				continue
 			}
 

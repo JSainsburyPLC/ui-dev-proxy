@@ -54,7 +54,7 @@ func NewMatcher() Matcher {
 	}
 }
 
-// Matches a mock against all matchers
+// Match matches a mock against all matchers
 func (m Matcher) Match(r *http.Request, mock Mock) bool {
 	found := true
 	for _, matcher := range m.matchers {

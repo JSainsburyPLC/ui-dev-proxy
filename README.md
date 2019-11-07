@@ -44,9 +44,10 @@ See `examples/config.json`
   "type": "proxy", // Required
   "path_pattern": "^/test-ui/.*", // regex to match request path. Required
   "backend": "http://localhost:3000", // backend scheme and host to proxy to. Required
-  "rewrite": { // optional rewrite rules
-    "/test-ui/(.*)": "/$1"
-  }
+  "rewrite": [{ // rewrite rules. Optional
+    "path_pattern": "/test-ui/(.*)",
+    "to": "/$1",
+  }],
 }
 ```
 
@@ -72,6 +73,19 @@ See `examples/config.json`
         }
       ]
     }
+  }
+}
+```
+
+### Redirect type rules
+
+```json
+{
+  "type": "redirect",
+  "path_pattern": "^/test-ui/(.*)",
+  "redirect": {
+    "to": "http://localhost:3000/$1",
+    "type": "temporary"
   }
 }
 ```

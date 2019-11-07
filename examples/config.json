@@ -25,6 +25,23 @@
           ]
         }
       }
+    },
+    {
+      "type": "proxy",
+      "path_pattern": "^/test-ui/.*",
+      "backend": "http://localhost:3000",
+      "rewrite": [{
+        "path_pattern": "/test-ui/(.*)",
+        "to": "/$1"
+      }]
+    },
+    {
+      "type": "redirect",
+      "path_pattern": "^/test-ui/(.*)",
+      "redirect": {
+        "to": "http://localhost:3000/$1",
+        "type": "temporary"
+      }
     }
   ]
 }
