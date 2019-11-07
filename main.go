@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-const version = "0.1.0"
+var version string
 
 func main() {
 	app := cli.NewApp()
