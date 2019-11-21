@@ -238,6 +238,7 @@ func otherProxyMock(status int, responseBody string) *apitest.Mock {
 
 func userProxyMock(status int, responseBody string) *apitest.Mock {
 	return apitest.NewMock().Get("http://localhost:3001/test-ui/users/info").
+		Header("Referer", "https://www.test.example.com").
 		RespondWith().
 		Status(status).
 		Body(responseBody).
@@ -267,6 +268,9 @@ func config() domain.Config {
 				Type:        "proxy",
 				PathPattern: &domain.PathPattern{Regexp: regexp.MustCompile("^/test-ui/users/.*")},
 				Backend:     &domain.Backend{URL: mockProxyUrlUserUi},
+				ProxyPassHeaders: map[string]string{
+					"Referer": "https://www.test.example.com",
+				},
 			},
 			{
 				Type:        "proxy",

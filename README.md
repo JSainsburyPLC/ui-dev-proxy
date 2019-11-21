@@ -48,6 +48,9 @@ See `examples/config.json`
     "path_pattern": "/test-ui/(.*)",
     "to": "/$1",
   }],
+  "proxy_pass_headers": { // additional proxy headers. Optional
+    "Referer": "https://www.test.example.com"
+  }
 }
 ```
 
