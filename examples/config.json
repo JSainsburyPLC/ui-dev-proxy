@@ -33,7 +33,10 @@
       "rewrite": [{
         "path_pattern": "/test-ui/(.*)",
         "to": "/$1"
-      }]
+      }],
+      "proxy_pass_headers": {
+        "Referer": "https://www.test1.example.co.uk/"
+      }
     },
     {
       "type": "redirect",

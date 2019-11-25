@@ -84,6 +84,11 @@ func director(defaultBackend *url.URL, logger *log.Logger) func(req *http.Reques
 				break
 			}
 		}
+
+		// set any proxy pass headers from config
+		for name, value := range route.ProxyPassHeaders {
+			req.Header.Set(name, value)
+		}
 	}
 }
 
