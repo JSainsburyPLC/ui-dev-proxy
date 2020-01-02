@@ -33,6 +33,10 @@ func StartCommand(logger *log.Logger, confProvider domain.ConfigProvider) cli.Co
 				Usage: "Turn on mocks",
 			},
 			cli.BoolFlag{
+				Name:  "debug, d",
+				Usage: "Enable debug logging",
+			},
+			cli.BoolFlag{
 				Name:  "tls-enabled",
 				Usage: "Turn on TLS (tls-certfile and tls-keyfile both required if this is true)",
 			},
@@ -57,6 +61,7 @@ func startAction(logger *log.Logger, confProvider domain.ConfigProvider) cli.Act
 		confFile := c.String("config")
 		port := c.Int("port")
 		mocksEnabled := c.Bool("enable-mocks")
+		debug := c.Bool("debug")
 		tlsEnabled := c.Bool("tls-enabled")
 		tlsCertfile := c.String("tls-certfile")
 		tlsKeyfile := c.String("tls-keyfile")
@@ -65,6 +70,7 @@ func startAction(logger *log.Logger, confProvider domain.ConfigProvider) cli.Act
 		logger.Printf("Config file: %s\n", confFile)
 		logger.Printf("Port: %d\n", port)
 		logger.Printf("Mocks enabled: %t\n", mocksEnabled)
+		logger.Printf("Debug: %t\n", debug)
 		logger.Printf("TLS enabled: %t\n", tlsEnabled)
 		if tlsEnabled {
 			logger.Printf("TLS certfile: %s\n", tlsCertfile)
@@ -81,7 +87,7 @@ func startAction(logger *log.Logger, confProvider domain.ConfigProvider) cli.Act
 			return cli.NewExitError(err, 1)
 		}
 
-		p := proxy.NewProxy(port, conf, defaultBackend, mocksEnabled, logger)
+		p := proxy.NewProxy(port, conf, defaultBackend, debug, mocksEnabled, logger)
 
 		if tlsEnabled {
 			p.TlsEnabled = true

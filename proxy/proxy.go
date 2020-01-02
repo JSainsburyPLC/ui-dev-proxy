@@ -28,12 +28,16 @@ func NewProxy(
 	port int,
 	conf domain.Config,
 	defaultBackend *url.URL,
+	debug bool,
 	mocksEnabled bool,
 	logger *log.Logger,
 ) *Proxy {
 	reverseProxy := &httputil.ReverseProxy{
 		Director:     director(defaultBackend, logger),
 		ErrorHandler: errorHandler(logger),
+	}
+	if debug {
+		reverseProxy.Transport = &debugTransport{originalTransport: &http.Transport{}}
 	}
 	return &Proxy{
 		server: &http.Server{
