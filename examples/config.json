@@ -36,6 +36,9 @@
       }],
       "proxy_pass_headers": {
         "Referer": "https://www.test1.example.co.uk/"
+      },
+      "proxy_response_headers": {
+        "Cache-Control": "no-cache"
       }
     },
     {

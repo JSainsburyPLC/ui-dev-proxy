@@ -50,6 +50,9 @@ See `examples/config.json`
   }],
   "proxy_pass_headers": { // additional proxy headers. Optional
     "Referer": "https://www.test.example.com"
+  },
+  "proxy_response_headers": { // set response headers. Optional
+    "Cache-Control": "no-cache"
   }
 }
 ```

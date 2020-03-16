@@ -58,6 +58,7 @@ func TestProxy_ProxyBackend_UserProxy_Success(t *testing.T) {
 		Get("/test-ui/users/info").
 		Expect(t).
 		Status(http.StatusOK).
+		Header("Cache-Control", "no-cache").
 		Body(`{"user_id": "123"}`).
 		End()
 }
@@ -270,6 +271,9 @@ func config() domain.Config {
 				Backend:     &domain.Backend{URL: mockProxyUrlUserUi},
 				ProxyPassHeaders: map[string]string{
 					"Referer": "https://www.test.example.com",
+				},
+				ProxyResponseHeaders: map[string]string{
+					"Cache-Control": "no-cache",
 				},
 			},
 			{
