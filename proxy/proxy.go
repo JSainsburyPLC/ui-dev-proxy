@@ -32,8 +32,9 @@ func NewProxy(
 	logger *log.Logger,
 ) *Proxy {
 	reverseProxy := &httputil.ReverseProxy{
-		Director:     director(defaultBackend, logger),
-		ErrorHandler: errorHandler(logger),
+		Director:       director(defaultBackend, logger),
+		ModifyResponse: modifyResponse(),
+		ErrorHandler:   errorHandler(logger),
 	}
 	return &Proxy{
 		server: &http.Server{
@@ -92,6 +93,22 @@ func director(defaultBackend *url.URL, logger *log.Logger) func(req *http.Reques
 	}
 }
 
+func modifyResponse() func(*http.Response) error {
+	return func(res *http.Response) error {
+		route, ok := res.Request.Context().Value(routeCtxKey).(*domain.Route)
+		if !ok {
+			// if route not set, then default backend was used and no route match config available
+			return nil
+		}
+
+		for k, v := range route.ProxyResponseHeaders {
+			res.Header.Set(k, v)
+		}
+
+		return nil
+	}
+}
+
 func errorHandler(logger *log.Logger) func(http.ResponseWriter, *http.Request, error) {
 	return func(w http.ResponseWriter, r *http.Request, err error) {
 		logger.Printf("%+v\n", err)
@@ -135,6 +152,7 @@ func handler(
 				logger.Printf(err.Error())
 				w.WriteHeader(http.StatusBadGateway)
 				_, _ = w.Write([]byte("Bad gateway"))
+				return
 			}
 
 			http.Redirect(w, r, u.String(), redirectStatusCode(matchedRoute.Redirect.Type))
