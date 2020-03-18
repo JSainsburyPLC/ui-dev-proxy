@@ -33,11 +33,11 @@ func NewProxy(
 	logger *log.Logger,
 	tlsSkipVerify bool,
 ) *Proxy {
-	http.DefaultTransport = &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: tlsSkipVerify,
-		},
+	defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
+	defaultTransport.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: tlsSkipVerify,
 	}
+	http.DefaultTransport = defaultTransport
 
 	reverseProxy := &httputil.ReverseProxy{
 		Director:       director(defaultBackend, logger),
