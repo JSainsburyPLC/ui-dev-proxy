@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,9 +33,7 @@ func NewProxy(
 	tlsSkipVerify bool,
 ) *Proxy {
 	defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
-	defaultTransport.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: tlsSkipVerify,
-	}
+	defaultTransport.TLSClientConfig.InsecureSkipVerify = tlsSkipVerify
 	http.DefaultTransport = defaultTransport
 
 	reverseProxy := &httputil.ReverseProxy{
