@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,12 +31,20 @@ func NewProxy(
 	defaultBackend *url.URL,
 	mocksEnabled bool,
 	logger *log.Logger,
+	tlsSkipVerify bool,
 ) *Proxy {
+	http.DefaultTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: tlsSkipVerify,
+		},
+	}
+
 	reverseProxy := &httputil.ReverseProxy{
 		Director:       director(defaultBackend, logger),
 		ModifyResponse: modifyResponse(),
 		ErrorHandler:   errorHandler(logger),
 	}
+
 	return &Proxy{
 		server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
