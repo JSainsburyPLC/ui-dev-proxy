@@ -2,15 +2,22 @@ package proxy
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"path"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/jackwakefield/gopac"
 
 	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
 )
@@ -24,6 +31,73 @@ type Proxy struct {
 	TlsKeyFile  string
 }
 
+func sainsHTTPTransport(logger *log.Logger) *http.Transport {
+	dialer := &net.Dialer{
+		Timeout:   10 * time.Second,
+		KeepAlive: 10 * time.Second,
+		DualStack: true,
+	}
+	parser := new(gopac.Parser)
+	pacFile := os.Getenv("PAC_FILE")
+	proxyFunc := http.ProxyFromEnvironment
+	if pacFile != "" {
+		pacUrl, err := url.Parse(pacFile)
+		if err != nil {
+			panic(err)
+		}
+		if pacUrl.Scheme == "file" {
+			err = parser.Parse("/Users/kevin.cross/web-proxy5.pac")
+		} else {
+			err = parser.ParseUrl(pacFile)
+		}
+		if err != nil {
+			panic(err)
+		}
+
+		m := sync.Mutex{}
+
+		proxyFunc = func(request *http.Request) (*url.URL, error) {
+			reqUrl := request.URL.String()
+			reqHost := request.URL.Hostname()
+			m.Lock()
+			entry, err2 := findProxy(parser, reqUrl, reqHost)
+			m.Unlock()
+			if err2 != nil {
+				logger.Printf("ERROR from pac: %s", err2)
+				return nil, err2
+			}
+			if entry == "DIRECT" {
+				return nil, nil
+			}
+			newEntry := strings.ToLower(entry)
+			proxys := strings.Split(newEntry, ";")
+			proxy := strings.TrimSpace(strings.TrimPrefix(proxys[0], "proxy"))
+			return &url.URL{Host: proxy}, nil
+		}
+	}
+
+	tr := &http.Transport{
+		Proxy:                 proxyFunc,
+		DialContext:           dialer.DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		MaxIdleConns:          20,
+		MaxIdleConnsPerHost:   20,
+		IdleConnTimeout:       20 * time.Second,
+		ExpectContinueTimeout: 10 * time.Second,
+	}
+
+	return tr
+}
+func findProxy(parser *gopac.Parser, reqUrl string, reqHost string) (entry string, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%s", r)
+			entry = ""
+		}
+	}()
+	return parser.FindProxy(reqUrl, reqHost)
+}
+
 func NewProxy(
 	port int,
 	conf domain.Config,
@@ -33,13 +107,15 @@ func NewProxy(
 ) *Proxy {
 	reverseProxy := &httputil.ReverseProxy{
 		Director:       director(defaultBackend, logger),
+		Transport:      sainsHTTPTransport(logger),
 		ModifyResponse: modifyResponse(),
 		ErrorHandler:   errorHandler(logger),
 	}
 	return &Proxy{
 		server: &http.Server{
-			Addr:    fmt.Sprintf(":%d", port),
-			Handler: handler(logger, reverseProxy, conf, domain.NewMatcher(), mocksEnabled),
+			Addr:      fmt.Sprintf(":%d", port),
+			Handler:   handler(logger, reverseProxy, conf, domain.NewMatcher(), mocksEnabled),
+			TLSConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
 }
