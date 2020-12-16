@@ -1,0 +1,7 @@
+{
+  "schema-version": "1.0.0",
+  "maintainers": [],
+  "owners": [],
+  "name": "ui-dev-proxy",
+  "description": "Opensource CLI tool. Local proxy used for developing frontend applications. Used primarily by GOL teams"
+}
