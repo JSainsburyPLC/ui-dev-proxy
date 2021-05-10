@@ -89,6 +89,10 @@ var matchesQuery matcher = func(r *http.Request, mock Mock) bool {
 		return true
 	}
 
+	if mock.MatchRequest.Query == r.URL.RawQuery {
+		return true
+	}
+
 	receivedQuery := r.URL.Query()
 	mockQuery, err := url.ParseQuery(mock.MatchRequest.Query)
 	if err != nil {
