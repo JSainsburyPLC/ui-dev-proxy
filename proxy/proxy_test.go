@@ -204,12 +204,72 @@ func TestProxy_MocksEnabled_ProxyBackend_Success(t *testing.T) {
 }
 
 func TestProxy_MocksEnabled_MockBackend_Success(t *testing.T) {
-	newApiTest(config(), "http://test-backend", true).
+	conf := config()
+	conf.Routes = []domain.Route{
+		{
+			Type: "mock",
+			Mock: &domain.Mock{
+				MatchRequest: domain.MatchRequest{
+					Method: "GET",
+					Path:   "^/api/users/.*",
+					Query:  "c=3",
+				},
+				Response: domain.Response{
+					Status: 200,
+					Body:   `{"name": "bob"}`,
+				},
+			},
+		},
+		{
+			Type: "mock",
+			Mock: &domain.Mock{
+				MatchRequest: domain.MatchRequest{
+					Method: "GET",
+					Path:   "^/api/users/.*",
+					Query:  "a=1&b=2",
+				},
+				Response: domain.Response{
+					Status: 200,
+					Body:   `{"name": "jon"}`,
+				},
+			},
+		},
+	}
+
+	newApiTest(conf, "http://test-backend", true).
+		Intercept(func(request *http.Request) {
+			request.URL.RawQuery = "a=1&b=2"
+		}).
 		Get("/api/users/info").
-		Query("include", "user_id").
 		Expect(t).
 		Status(http.StatusOK).
-		Body(`{"user_id": "123456"}`).
+		Body(`{"name": "jon"}`).
+		End()
+
+	newApiTest(conf, "http://test-backend", true).
+		Intercept(func(request *http.Request) {
+			request.URL.RawQuery = "b=2&a=1"
+		}).
+		Get("/api/users/info").
+		Expect(t).
+		Status(http.StatusOK).
+		Body(`{"name": "jon"}`).
+		End()
+
+	newApiTest(conf, "http://test-backend", true).
+		Intercept(func(request *http.Request) {
+			request.URL.RawQuery = "c=3"
+		}).
+		Get("/api/users/info").
+		Expect(t).
+		Status(http.StatusOK).
+		Body(`{"name": "bob"}`).
+		End()
+
+	newApiTest(conf, "http://test-backend", true).
+		Get("/api/users/info").
+		Expect(t).
+		Status(http.StatusBadGateway).
 		End()
 }
 

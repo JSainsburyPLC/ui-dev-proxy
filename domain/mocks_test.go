@@ -1,11 +1,12 @@
 package domain
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMatcher_Matches(t *testing.T) {
@@ -38,6 +39,38 @@ func TestMatcher_Matches(t *testing.T) {
 			request:          httptest.NewRequest(http.MethodPost, "/pet/search", strings.NewReader(`{"name": "John"}`)),
 			expectedResponse: Response{},
 			expectedOK:       false,
+		},
+		"with query params - page 1": {
+			mock: Mock{
+				MatchRequest: MatchRequest{
+					Method: "GET",
+					Path:   "/user",
+					Query:  "page=1",
+				},
+				Response: Response{
+					Status: 200,
+					Body:   `{"field": "page1"}`,
+				},
+			},
+			request:          httptest.NewRequest(http.MethodGet, "/user?page=1", nil),
+			expectedResponse: Response{Body: `{"field": "page1"}`, Status: 200},
+			expectedOK:       true,
+		},
+		"with query params - page 2": {
+			mock: Mock{
+				MatchRequest: MatchRequest{
+					Method: "GET",
+					Path:   "/user",
+					Query:  "page=2",
+				},
+				Response: Response{
+					Status: 200,
+					Body:   `{"field": "page1"}`,
+				},
+			},
+			request:          httptest.NewRequest(http.MethodGet, "/user?page=2", nil),
+			expectedResponse: Response{Body: `{"field": "page2"}`, Status: 200},
+			expectedOK:       true,
 		},
 	}
 	for name, test := range tests {
