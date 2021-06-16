@@ -30,12 +30,22 @@ func NewProxy(
 	defaultBackend *url.URL,
 	mocksEnabled bool,
 	logger *log.Logger,
+	tlsSkipVerify bool,
 ) *Proxy {
+	// TODO: find a way to disable tls verification without modifying
+	// the default transport. We do this currently due to an issue with
+	// unit tests relying on us using the default transport so we can't
+	// override it on the proxy directly.
+	defaultTransport := http.DefaultTransport.(*http.Transport).Clone()
+	defaultTransport.TLSClientConfig.InsecureSkipVerify = tlsSkipVerify
+	http.DefaultTransport = defaultTransport
+
 	reverseProxy := &httputil.ReverseProxy{
 		Director:       director(defaultBackend, logger),
 		ModifyResponse: modifyResponse(),
 		ErrorHandler:   errorHandler(logger),
 	}
+
 	return &Proxy{
 		server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),

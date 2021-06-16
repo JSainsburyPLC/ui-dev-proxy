@@ -22,7 +22,7 @@ func newApiTest(
 		panic(err)
 	}
 	logger := log.New(ioutil.Discard, "", log.LstdFlags)
-	p := NewProxy(8080, conf, u, mocksEnabled, logger)
+	p := NewProxy(8080, conf, u, mocksEnabled, logger, false)
 	return apitest.New().Handler(p.server.Handler)
 }
 

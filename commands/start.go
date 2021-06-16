@@ -1,11 +1,12 @@
 package commands
 
 import (
+	"log"
+	"net/url"
+
 	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
 	"github.com/JSainsburyPLC/ui-dev-proxy/proxy"
 	"github.com/urfave/cli"
-	"log"
-	"net/url"
 )
 
 func StartCommand(logger *log.Logger, confProvider domain.ConfigProvider) cli.Command {
@@ -44,6 +45,10 @@ func StartCommand(logger *log.Logger, confProvider domain.ConfigProvider) cli.Co
 				Name:  "tls-keyfile",
 				Usage: "Path to TLS key file",
 			},
+			cli.BoolFlag{
+				Name:  "tls-skip-verify",
+				Usage: "Disable TLS certificate verification",
+			},
 		},
 		Action: startAction(logger, confProvider),
 	}
@@ -60,6 +65,7 @@ func startAction(logger *log.Logger, confProvider domain.ConfigProvider) cli.Act
 		tlsEnabled := c.Bool("tls-enabled")
 		tlsCertfile := c.String("tls-certfile")
 		tlsKeyfile := c.String("tls-keyfile")
+		tlsSkipVerify := c.Bool("tls-skip-verify")
 
 		logger.Printf("Default backend URL: %s\n", defaultBackendUrl)
 		logger.Printf("Config file: %s\n", confFile)
@@ -81,7 +87,7 @@ func startAction(logger *log.Logger, confProvider domain.ConfigProvider) cli.Act
 			return cli.NewExitError(err, 1)
 		}
 
-		p := proxy.NewProxy(port, conf, defaultBackend, mocksEnabled, logger)
+		p := proxy.NewProxy(port, conf, defaultBackend, mocksEnabled, logger, tlsSkipVerify)
 
 		if tlsEnabled {
 			p.TlsEnabled = true
