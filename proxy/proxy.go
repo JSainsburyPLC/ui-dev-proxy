@@ -1,15 +1,20 @@
 package proxy
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/JSainsburyPLC/ui-dev-proxy/domain"
@@ -93,6 +98,44 @@ func director(defaultBackend *url.URL, logger *log.Logger) func(req *http.Reques
 	}
 }
 
+func gUnzipData(data []byte) ([]byte, error) {
+	b := bytes.NewBuffer(data)
+
+	var r io.Reader
+	r, err := gzip.NewReader(b)
+	if err != nil {
+		return nil, err
+	}
+
+	var resB bytes.Buffer
+	_, err = resB.ReadFrom(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return resB.Bytes(), nil
+}
+
+func gZipData(data []byte) ([]byte, error) {
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+
+	_, err := gz.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = gz.Flush(); err != nil {
+		return nil, err
+	}
+
+	if err = gz.Close(); err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
 func modifyResponse() func(*http.Response) error {
 	return func(res *http.Response) error {
 		route, ok := res.Request.Context().Value(routeCtxKey).(*domain.Route)
@@ -103,6 +146,48 @@ func modifyResponse() func(*http.Response) error {
 
 		for k, v := range route.ProxyResponseHeaders {
 			res.Header.Set(k, v)
+		}
+
+		if len(route.ProxyResponseReplacements) != 0 {
+
+			bodyBytes, err := ioutil.ReadAll(res.Body)
+			if err != nil {
+				return err
+			}
+
+			isGZipped := http.DetectContentType(bodyBytes) == "application/x-gzip"
+
+			if isGZipped {
+				bodyBytes, err = gUnzipData(bodyBytes)
+				if err != nil {
+					return err
+				}
+			}
+
+			bodyString := string(bodyBytes)
+
+			for k, v := range route.ProxyResponseReplacements {
+				bodyString = strings.ReplaceAll(bodyString, k, v)
+
+				for headerKey, headerValues := range res.Header {
+					res.Header.Del(headerKey)
+					for _, headerValue := range headerValues {
+						res.Header.Add(headerKey, strings.ReplaceAll(headerValue, k, v))
+					}
+				}
+			}
+
+			bodyBytes = []byte(bodyString)
+
+			if isGZipped {
+				bodyBytes, err = gZipData(bodyBytes)
+				if err != nil {
+					return err
+				}
+			}
+
+			res.Header.Set("content-length", fmt.Sprintf("%d", len(bodyBytes)))
+			res.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
 
 		return nil
