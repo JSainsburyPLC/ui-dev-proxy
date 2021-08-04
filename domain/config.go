@@ -17,14 +17,15 @@ type Config struct {
 }
 
 type Route struct {
-	Type                 string            `json:"type"`
-	PathPattern          *PathPattern      `json:"path_pattern"`
-	Backend              *Backend          `json:"backend"`
-	Mock                 *Mock             `json:"mock"`
-	Rewrite              []Rewrite         `json:"rewrite"`
-	Redirect             *Redirect         `json:"redirect"`
-	ProxyPassHeaders     map[string]string `json:"proxy_pass_headers"`
-	ProxyResponseHeaders map[string]string `json:"proxy_response_headers"`
+	Type                      string            `json:"type"`
+	PathPattern               *PathPattern      `json:"path_pattern"`
+	Backend                   *Backend          `json:"backend"`
+	Mock                      *Mock             `json:"mock"`
+	Rewrite                   []Rewrite         `json:"rewrite"`
+	Redirect                  *Redirect         `json:"redirect"`
+	ProxyPassHeaders          map[string]string `json:"proxy_pass_headers"`
+	ProxyResponseHeaders      map[string]string `json:"proxy_response_headers"`
+	ProxyResponseReplacements map[string]string `json:"proxy_response_replacements"`
 }
 
 type Rewrite struct {

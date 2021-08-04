@@ -63,6 +63,24 @@ func TestProxy_ProxyBackend_UserProxy_Success(t *testing.T) {
 		End()
 }
 
+func TestProxy_ProxyBackend_ResponseReplacements(t *testing.T) {
+	backendMock := apitest.NewMock().Get("http://localhost:3001/test-ui/users/info").
+		RespondWith().
+		Status(http.StatusOK).
+		Header("test-header", "test-value-1").
+		Body(`{"product_id": "test-value-1"}`).
+		End()
+
+	newApiTest(config(), "http://test-backend", false).
+		Mocks(backendMock).
+		Get("/test-ui/users/info").
+		Expect(t).
+		Status(http.StatusOK).
+		Header("test-header", "test-value-2").
+		Body(`{"product_id": "test-value-2"}`).
+		End()
+}
+
 func TestProxy_Rewrite(t *testing.T) {
 	tests := map[string]struct {
 		pattern string
@@ -334,6 +352,9 @@ func config() domain.Config {
 				},
 				ProxyResponseHeaders: map[string]string{
 					"Cache-Control": "no-cache",
+				},
+				ProxyResponseReplacements: map[string]string{
+					"test-value-1": "test-value-2",
 				},
 			},
 			{
