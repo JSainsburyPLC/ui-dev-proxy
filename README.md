@@ -7,7 +7,7 @@ Proxy tool for development of UIs. Supports mocks, http redirects and URL rewrit
 ## Installation
 
 ```
-go get -u github.com/JSainsburyPLC/ui-dev-proxy
+go install github.com/JSainsburyPLC/ui-dev-proxy@latest
 ```
 
 ## Usage
